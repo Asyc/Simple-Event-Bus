@@ -10,7 +10,9 @@ import java.lang.annotation.Target;
 public @interface SubscribeEvent {
 
     /**
-     * Will only affect anything if the event bus is being sorted
+     * This value is used to sort the list of methods in {@link EventBus#registry}.
+     * This value will only be used if {@link EventBus#sorted} is true.
+     * @return returns the priority of the method that is being annotated.
      */
     int priority() default 1;
 }
