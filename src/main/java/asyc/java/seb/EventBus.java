@@ -1,22 +1,26 @@
 package asyc.java.seb;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 
 /**
  * @author Asyc
+ * @since 11/13/18
  */
 public class EventBus {
 
     /**
      * A list of methods to be invoked once a certain object is called at {@link #call(Object)}
      */
-    private HashMap<Object, List<MethodData>> registry = new HashMap<>();
+    private Map<Object, List<MethodData>> registry = new WeakHashMap<>();
+
+    /**
+     * A cache to improve register/unregister speeds
+     */
+    private Map<Object, HashMap<Object, List<MethodData>>> cache = new WeakHashMap<>();
+
     private boolean sorted;
 
     /**
@@ -38,12 +42,20 @@ public class EventBus {
      * @param obj is the object that will be added to the registry HashMap.
      */
     public void registerClass(Object obj){
-        for(final Method method : obj.getClass().getDeclaredMethods()){
-            if(!isMethodValid(method)) continue;
-            registry.computeIfAbsent(method.getParameters()[0].getType(), ignored -> new CopyOnWriteArrayList<>()).add(new MethodData(obj, method));
-        }
-        if(sorted){
-            sortAll();
+        if(!cache.containsKey(obj)) {
+            for (final Method method : obj.getClass().getDeclaredMethods()) {
+                if (!isMethodValid(method)) continue;
+                registry.computeIfAbsent(method.getParameters()[0].getType(), ignored -> new CopyOnWriteArrayList<>()).add(new MethodData(obj, method));
+                cache.put(obj, new HashMap<>());
+                cache.get(obj).computeIfAbsent(method.getParameters()[0].getType(), ignored -> new CopyOnWriteArrayList<>()).add(new MethodData(obj, method));
+            }
+            if (sorted) {
+                sortAll();
+            }
+        }else{
+            for(Map.Entry<Object, List<MethodData>> entry : cache.get(obj).entrySet()){
+                registry.computeIfAbsent(entry.getKey(), ignored -> new CopyOnWriteArrayList<>()).addAll(entry.getValue());
+            }
         }
     }
 
@@ -69,7 +81,9 @@ public class EventBus {
      */
     public void registerMethod(Object parent, Method method){
         if(!isMethodValid(method)) return;
-        registry.computeIfAbsent(method.getParameters()[0].getType(), ignored -> new CopyOnWriteArrayList<>()).add(new MethodData(parent, method));
+        MethodData data = new MethodData(parent, method);
+        registry.computeIfAbsent(method.getParameters()[0].getType(), ignored -> new CopyOnWriteArrayList<>()).add(data);
+        cache.computeIfAbsent(parent, ignored -> new HashMap<>()).computeIfAbsent(method.getParameters()[0].getType(), ignored -> new CopyOnWriteArrayList<>()).add(data);
         if(sorted){
             sort(method.getParameters()[0].getType());
         }
