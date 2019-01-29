@@ -1,25 +1,31 @@
 package asyc.java.seb.testing;
 
-import asyc.java.seb.EventBus;
-import asyc.java.seb.SubscribeEvent;
+import me.asycc.seb.EventBus;
+import me.asycc.seb.annotation.EventSubscriber;
+
 
 public class Main {
 
-    public static final EventBus EVENT_BUS = new EventBus();
+    public static class Event{}
 
     public static void main(String[] args){
+
+        EventBus bus = new EventBus();
+
         Main instance = new Main();
-        EVENT_BUS.registerClass(instance);
-        EVENT_BUS.call(new Event());
+
+        bus.register(instance);
+
+        long lastMS = System.currentTimeMillis();
+
+        int invokeCount = 1000000;
+
+        bus.post(new Event(), invokeCount);
+
+        System.out.println("Posted " + invokeCount + " events in " + (System.currentTimeMillis() - lastMS));
     }
 
-    @SubscribeEvent
-    public void onEvent(Event event){
-        System.out.println("Called!");
+    @EventSubscriber
+    public void onEvent(Event event) {
     }
-
-}
-
-class Event{
-
 }
